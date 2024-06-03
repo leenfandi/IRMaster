@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+        integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <title>Document</title>
+</head>
+
+<body>
+    <!-- <div class="container"> -->
+
+    <div class="container">
+
+        <div class="d-flex justify-content-center align-items-center" style="height:100vh">
+            <div class="row">
+                <div class="container">
+                    <div class="jumbotron jumbotron-fluid">
+                        <div class="container">
+                            <h1 class="display-4"> <i class="fa fa-search fa-lg"></i> Search Engine </h1>
+                            <br>
+                            <br>
+                            <div class="col" style="height: 100px;width:900px;">
+                                <input type="radio" id="option1" name="options" value="Dataset1">
+                                <label for="option1">Antique Dataset</label>
+                                <input type="radio" id="option2" name="options" value="Dataset2">
+                                <label for="option2">Wikir Dataset </label>
+                                <br>
+                                <button id="submit-btn" class="btn btn-secondary btn-sm">Submit</button>
+                            </div>
+                            <div class="col" style="height: 100px;width:-150;">
+
+                                <label>
+                                    <input type="radio" name="language" value="en-US" checked>
+                                    English (US)
+                                </label>
+                                <label>
+                                    <input type="radio" name="language" value="ar-SA">
+                                    Arabic (SA)
+                                </label>
+                            </div>
+                        </div>
+                        <hr class="my-4">
+                        <div class="row align-items-center">
+                            <div class="col">
+
+                                <form id="my-form" action="{{ url_for('writeprocessquery')}}" method="post">
+                                    <div class="input-group mb-3">
+                                        <input type="json" id="firstname" name="fname" class="form-control"
+                                            placeholder="write whate do you wante search"
+                                            aria-label="Recipient's username" aria-describedby="button-addon2">
+                                        <div class="input-group-append">
+                                            <button type="submit" class="btn btn-outline-secondary"><i
+                                                    class="fa fa-search"></i></button>
+                                        </div>
+                                    </div>
+                                    <!-- <button type="submit">search</button> -->
+                                </form>
+                            </div>
+                            <div class="col">
+                                <button id="record-btn"><i class="fa fa-microphone"></i></button>
+                                <p id="transcription"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <ul id="speakresults"></ul>
+            <ul id="results"></ul>
+        </div>
+    </div>
+
+
+
+    <script>
+        window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        const recognition = new window.SpeechRecognition();
+        const transcription = document.getElementById('transcription');
+        var recordButton = document.getElementById('record-btn');
+        recordButton.addEventListener('click', () => {
+            // recognition.lang = "ar-SA"
+            recognition.start();
+            console.log('Recording started');
+        });
+        recognition.addEventListener('result', (e) => {
+            const transcript = Array.from(e.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+            console.log('Transcript:', transcript);
+            transcription.textContent = 'Do you mean : ' + transcript;
+            submitTranscription(transcript);
+        });
+
+        function submitTranscription(transcript) {
+
+            fetch('/processquery', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: transcript })
+
+            }).then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    //const myDataDiv = document.querySelector('#my-data');
+                    // myDataDiv.textContent = JSON.stringify(data);
+                    results = data
+                    var resultList = document.getElementById('speakresults');
+                    for (var n = 0; n < results.length; n++) {
+                        resultList.innerHTML += `<li class="list-group-item">${results[n]}</li>`;
+                    }
+
+                })
+
+        }
+        var form = document.getElementById('my-form');
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var formData = new FormData(form);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/writeprocessquery');
+            xhr.onload = function () {
+                var response = JSON.parse(xhr.responseText);
+                var results = response['name'];
+                var resultList = document.getElementById('results');
+                for (var n = 0; n < results.length; n++) {
+                    resultList.innerHTML += `<li class="list-group-item">${JSON.stringify(results[n])}</li>`;
+                }
+
+                //var newItem = document.createElement("li");
+                //var textNode = document.createTextNode(name);
+                //newItem.appendChild(textNode);
+
+                // Add the new item to the list
+                //var myList = document.getElementById("myList");
+                //myList.appendChild(newItem);
+
+            };
+            xhr.send(formData);
+        });
+        var submitBtn = document.getElementById('submit-btn');
+        //var resultDiv = document.getElementById('result');
+
+        submitBtn.addEventListener('click', function () {
+            var options = document.getElementsByName('options');
+            var selectedOption;
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].checked) {
+                    selectedOption = options[i].value;
+                    break;
+                }
+            }
+            if (selectedOption) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/submit-option?selected_option=' + encodeURIComponent(selectedOption));
+                xhr.onload = function () {
+                    resultDiv.innerHTML = xhr.responseText;
+                };
+                xhr.send();
+            }
+        });
+
+        document.querySelectorAll('input[name="language"]').forEach((radio) => {
+            radio.addEventListener('change', () => {
+                currentLanguage = radio.value;
+                recognition.lang = currentLanguage;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/submit-lang-option?selected_option=' + encodeURIComponent(currentLanguage));
+                xhr.onload = function () {
+                    //  resultDiv.innerHTML = xhr.responseText;
+                };
+                xhr.send();
+            });
+        });
+
+
+
+
+
+
+
+
+       // var submitBtn = document.getElementById('submit-lan-btn');
+        //var resultDiv = document.getElementById('result');
+
+      //  submitBtn.addEventListener('click', function () {
+        //    var options = document.getElementsByName('lang');
+       //     var selectedOption;
+       //     for (var i = 0; i < options.length; i++) {
+         //       if (options[i].checked) {
+               //     selectedOption = options[i].value;
+              //      break;
+           //     }
+        //    }
+        //    if (selectedOption) {
+        //        var xhr = new XMLHttpRequest();
+           //     xhr.open('POST', '/submit-lang-option?selected_option=' + encodeURIComponent(selectedOption));
+          //      xhr.onload = function () {
+          //          resultDiv.innerHTML = xhr.responseText;
+          //          if (selectedOption = "arabic")
+         //               recognition.lang = "ar-SA";
+          //          else
+          //              recognition.lang = 'en-US';
+         //       };
+         //       xhr.send();
+        //    }
+      //  });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+        crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/3c516c687f.js" crossorigin="anonymous"></script>
+</body>
